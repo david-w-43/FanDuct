@@ -25,7 +25,7 @@ plate_thickness = 3;
 // Thickness of the walls
 wall_thickness = 2;
 
-// Here you can customise the shape of the duct output (2D only!)
+// Here you can customise the shape of the duct output
 module duct_out() {
     square([235, 90]);
 }
