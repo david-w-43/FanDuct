@@ -19,6 +19,9 @@ hole_spacing = 105;
 // Mounting hole diameter
 hole_diameter = 4.3;
 
+// Use slots instead of holes
+slot = false;
+
 // Thickness of the plate that mounts to the fans
 plate_thickness = 3;
 
@@ -52,15 +55,16 @@ create_model(
     output_offset, 
     wall_thickness, 
     hole_spacing, 
-    hole_diameter
+    hole_diameter,
+    slot
 );
 
-module create_model(n, fan_size, fan_hole_size, full_height, plate_thickness, output_offset, wall_thickness, hole_spacing, hole_diameter)
+module create_model(n, fan_size, fan_hole_size, full_height, plate_thickness, output_offset, wall_thickness, hole_spacing, hole_diameter, slot)
 {
     duct_height = full_height - plate_thickness;
     
     // Create plate that attaches to fans
-    plate(n, fan_size, fan_hole_size, plate_thickness, wall_thickness, hole_spacing, hole_diameter);
+    plate(n, fan_size, fan_hole_size, plate_thickness, wall_thickness, hole_spacing, hole_diameter, slot);
     
     translate([0, 0, plate_thickness])
         duct(n, fan_size, fan_hole_size, duct_height, output_offset, wall_thickness);
@@ -94,12 +98,12 @@ module duct_shell(n, fan_size, fan_hole_size, output_offset, height, expansion =
 }
 
 // Create the mounting plate
-module plate(n, fan_size, fan_hole_size, plate_thickness, wall_thickness, hole_spacing, hole_diameter)
+module plate(n, fan_size, fan_hole_size, plate_thickness, wall_thickness, hole_spacing, hole_diameter, slot)
 {
     linear_extrude(plate_thickness)
         difference() {
             plate_positive(n, fan_size, hole_spacing, wall_thickness);
-            fan_negatives(n, fan_size, fan_hole_size, hole_spacing, hole_diameter);
+            fan_negatives(n, fan_size, fan_hole_size, hole_spacing, hole_diameter, slot);
         }
 }
 
@@ -120,7 +124,7 @@ module plate_positive(n, fan_size, hole_spacing, wall_thickness) {
 }
 
 // Create plate negative space for n fans 
-module fan_negatives(n, fan_size, fan_hole_size, hole_spacing, hole_diameter) {
+module fan_negatives(n, fan_size, fan_hole_size, hole_spacing, hole_diameter, slot) {
     offset = fan_size/2;
     translate([offset, offset, 0]) {
         // Create joined fan hole
@@ -128,12 +132,12 @@ module fan_negatives(n, fan_size, fan_hole_size, hole_spacing, hole_diameter) {
         
         // Special case: single fan
         if (n == 1) {
-            mounting_holes(fan_size, hole_spacing, hole_diameter, "all");
+            mounting_holes(fan_size, hole_spacing, hole_diameter, slot, "all");
         } else {
             // Fans at the end get holes, those in the middle get none
             for (i = [0:n-1]) {
                 translate([i*fan_size, 0, 0])
-                    mounting_holes(hole_spacing, hole_diameter, 
+                    mounting_holes(hole_spacing, hole_diameter, slot,
                         i == 0 ? "left" : 
                         i == n - 1 ? "right" : "none"
                     );
@@ -153,7 +157,7 @@ module fan_hole(n, fan_size, fan_hole_size) {
 }
 
 // Create the holes for a single fan, specifying dimensions and which holes
-module mounting_holes(hole_spacing, hole_diameter, holes=
+module mounting_holes(hole_spacing, hole_diameter, slot = false, holes=
     "all") {
     
     // Mounting hole locations
@@ -170,6 +174,17 @@ module mounting_holes(hole_spacing, hole_diameter, holes=
         holes=="right" ? [locs_master[1], locs_master[2]] : []) {
    
         translate([locs.x - offset, locs.y - offset, 0])
-            circle(d=hole_diameter);
+            if (slot == false)
+            {
+                circle(d=hole_diameter);
+            } else {
+                hull(){
+                    translate([-0.5 * hole_diameter, 0, 0])
+                        circle(d=hole_diameter);
+                    translate([+0.5 * hole_diameter, 0, 0])
+                        circle(d=hole_diameter);
+                }
+            }
+            
     }
 }
