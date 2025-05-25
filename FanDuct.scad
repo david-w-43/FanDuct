@@ -7,8 +7,11 @@
 // Number of fans
 num_fans = 2;
 
-// Fan size (e.g. 120, 140)
+// Fan size, e.g. 120 or 140
 fan_size = 120;
+
+// Fan hole size
+fan_hole_size = 116;
 
 // Spacing between mounting holes, e.g. 105 for a 120 mm fan
 hole_spacing = 105;
@@ -33,12 +36,17 @@ full_height = 40;
 // Offset of duct output 
 output_offset = [20, 40];
 
+// Segments for circle, improves model quality at cost of render time
+$fn = 50;
+
+
 // ================================================================
 
 // Create the model!
 create_model(
     num_fans, 
-    fan_size, 
+    fan_size,
+    fan_hole_size,
     full_height, 
     plate_thickness, 
     output_offset, 
@@ -47,28 +55,28 @@ create_model(
     hole_diameter
 );
 
-module create_model(n, fan_size, full_height, plate_thickness, output_offset, wall_thickness, hole_spacing, hole_diameter)
+module create_model(n, fan_size, fan_hole_size, full_height, plate_thickness, output_offset, wall_thickness, hole_spacing, hole_diameter)
 {
     duct_height = full_height - plate_thickness;
     
     // Create plate that attaches to fans
-    plate(n, fan_size, plate_thickness, wall_thickness, hole_spacing, hole_diameter);
+    plate(n, fan_size, fan_hole_size, plate_thickness, wall_thickness, hole_spacing, hole_diameter);
     
     translate([0, 0, plate_thickness])
-        duct(n, fan_size, duct_height, output_offset, wall_thickness);
+        duct(n, fan_size, fan_hole_size, duct_height, output_offset, wall_thickness);
 }
 
-module duct(n, fan_size, height, output_offset, wall_thickness) {
+module duct(n, fan_size, fan_hole_size, height, output_offset, wall_thickness) {
     difference() {
         // Positive space with added wall thickness
-        duct_shell(n, fan_size, output_offset, height, wall_thickness);
+        duct_shell(n, fan_size, fan_hole_size, output_offset, height, wall_thickness);
         
         // Negative space
-        duct_shell(n, fan_size, output_offset, height);
+        duct_shell(n, fan_size, fan_hole_size, output_offset, height);
     }
 }
 
-module duct_shell(n, fan_size, output_offset, height, expansion = 0) {
+module duct_shell(n, fan_size, fan_hole_size, output_offset, height, expansion = 0) {
     // Need non-zero extrusion to make 3D shaped prior to hull()
     solidifier = 1;
     offset = fan_size/2;
@@ -76,7 +84,7 @@ module duct_shell(n, fan_size, output_offset, height, expansion = 0) {
         translate([offset, offset, 0])
             linear_extrude(solidifier)
                 offset(r = expansion)
-                    fan_hole(n, fan_size);
+                    fan_hole(n, fan_size, fan_hole_size);
         
         translate([output_offset.x, output_offset.y, height-solidifier])
             linear_extrude(solidifier)
@@ -86,12 +94,12 @@ module duct_shell(n, fan_size, output_offset, height, expansion = 0) {
 }
 
 // Create the mounting plate
-module plate(n, fan_size, plate_thickness, wall_thickness, hole_spacing, hole_diameter)
+module plate(n, fan_size, fan_hole_size, plate_thickness, wall_thickness, hole_spacing, hole_diameter)
 {
     linear_extrude(plate_thickness)
         difference() {
             plate_positive(n, fan_size, hole_spacing, wall_thickness);
-            fan_negatives(n, fan_size, hole_spacing, hole_diameter);
+            fan_negatives(n, fan_size, fan_hole_size, hole_spacing, hole_diameter);
         }
 }
 
@@ -102,7 +110,7 @@ module plate_positive(n, fan_size, hole_spacing, wall_thickness) {
     corner_radius = (fan_size - hole_spacing)/2;
     
     // Add the wall thickness
-    offset(r = wall_thickness)
+    //offset(r = wall_thickness)
         // Round the corners
         offset(r = corner_radius)
         offset(r = -corner_radius)
@@ -112,11 +120,11 @@ module plate_positive(n, fan_size, hole_spacing, wall_thickness) {
 }
 
 // Create plate negative space for n fans 
-module fan_negatives(n, fan_size, hole_spacing, hole_diameter) {
+module fan_negatives(n, fan_size, fan_hole_size, hole_spacing, hole_diameter) {
     offset = fan_size/2;
     translate([offset, offset, 0]) {
         // Create joined fan hole
-        fan_hole(n, fan_size);
+        fan_hole(n, fan_size, fan_hole_size);
         
         // Special case: single fan
         if (n == 1) {
@@ -135,11 +143,11 @@ module fan_negatives(n, fan_size, hole_spacing, hole_diameter) {
 }
 
 // Creates a joined hole for n fans of a given size
-module fan_hole(n, fan_size) {
+module fan_hole(n, fan_size, fan_hole_size) {
     hull() {
         for (i = [0:n-1]) {
             translate([i*fan_size, 0, 0])
-                circle(d = fan_size);
+                circle(d = fan_hole_size);
         }
     }
 }
