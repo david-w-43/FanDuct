@@ -28,22 +28,34 @@ plate_thickness = 1.5;
 // Thickness of the walls
 wall_thickness = 2;
 
-// Here you can customise the shape of the duct output
+// Add some (inner) reinforcements to the walls
+reinforcement = true;
+
+// Here you can customise the 2D shape of the duct output
 module duct_out() {
-    square([235, 90]);
+    square([207, 80]);
+}
+
+// And some cutouts. There's probably a nicer way of doing this!
+module cutouts() {
+    translate([87.5, 0, full_height - 5])
+        cube([17, 150, 5]);
+    translate([200, 0, full_height - 5])
+        cube([17, 150, 5]);
 }
 
 // Full height of the duct
-full_height = 10;
+full_height = 16;
 
 // Offset of duct output 
-output_offset = [10, 40];
+output_offset = [-6, 29];
 
 // Segments for circle, improves model quality at cost of render time
 $fn = 50;
 
 
 // ================================================================
+
 
 // Create the model!
 create_model(
@@ -56,18 +68,49 @@ create_model(
     wall_thickness, 
     hole_spacing, 
     hole_diameter,
-    slot
+    slot,
+    reinforcement
 );
 
-module create_model(n, fan_size, fan_hole_size, full_height, plate_thickness, output_offset, wall_thickness, hole_spacing, hole_diameter, slot)
+// ==================== Modules ===================================
+
+module create_model(n, fan_size, fan_hole_size, full_height, plate_thickness, output_offset, wall_thickness, hole_spacing, hole_diameter, slot, reinforcement)
 {
     duct_height = full_height - plate_thickness;
     
-    // Create plate that attaches to fans
-    plate(n, fan_size, fan_hole_size, plate_thickness, wall_thickness, hole_spacing, hole_diameter, slot);
-    
-    translate([0, 0, plate_thickness])
-        duct(n, fan_size, fan_hole_size, duct_height, output_offset, wall_thickness);
+    difference() {
+        // Positive space
+        union() {
+            // Create plate that attaches to fans
+            plate(n, fan_size, fan_hole_size, plate_thickness, wall_thickness, hole_spacing, hole_diameter, slot);
+            
+            // Create the duct, moved up to attach to the plate
+            translate([0, 0, plate_thickness])
+                duct(n, fan_size, fan_hole_size, duct_height, output_offset, wall_thickness);
+            
+            // Adds reinforcement above the fan housing 
+            if (reinforcement) 
+                add_reinforcement(n, fan_size, fan_hole_size, duct_height, output_offset, wall_thickness);
+        }
+        
+        // Negative space, your cutouts :)
+        cutouts();
+    }
+}
+
+module add_reinforcement(n, fan_size, fan_hole_size, duct_height, output_offset, wall_thickness) {
+    // Try to get some reinforcement in there
+    intersection() {
+        linear_extrude(full_height)
+            intersection() {
+                projection() duct(n, fan_size, fan_hole_size, duct_height, output_offset, wall_thickness);
+                translate([fan_size/2, fan_size/2, 0]) difference() {
+                    fan_hole(n, fan_size, fan_hole_size, reinforcement = false);
+                    fan_hole(n, fan_size, fan_hole_size, reinforcement = true);
+                }
+            }
+        duct_shell(n, fan_size, fan_hole_size, output_offset, full_height, wall_thickness);
+    }
 }
 
 module duct(n, fan_size, fan_hole_size, height, output_offset, wall_thickness) {
@@ -124,11 +167,11 @@ module plate_positive(n, fan_size, hole_spacing, wall_thickness) {
 }
 
 // Create plate negative space for n fans 
-module fan_negatives(n, fan_size, fan_hole_size, hole_spacing, hole_diameter, slot) {
+module fan_negatives(n, fan_size, fan_hole_size, hole_spacing, hole_diameter, slot, reinforcement = false) {
     offset = fan_size/2;
     translate([offset, offset, 0]) {
         // Create joined fan hole
-        fan_hole(n, fan_size, fan_hole_size);
+        fan_hole(n, fan_size, fan_hole_size, reinforcement);
         
         // Special case: single fan
         if (n == 1) {
@@ -147,13 +190,29 @@ module fan_negatives(n, fan_size, fan_hole_size, hole_spacing, hole_diameter, sl
 }
 
 // Creates a joined hole for n fans of a given size
-module fan_hole(n, fan_size, fan_hole_size) {
-    hull() {
-        for (i = [0:n-1]) {
+module fan_hole(n, fan_size, fan_hole_size, reinforcement = false) {
+    if (reinforcement) {
+        union() {
+            for (i = [0:n-1]) {
             translate([i*fan_size, 0, 0])
                 circle(d = fan_hole_size);
+            }
+            hull() {
+                for (i = [0:n-1]) {
+                    translate([i*fan_size, 0, 0])
+                        circle(d = 0.67 * fan_hole_size);
+                }
+            }
+        }
+    } else {
+        hull() {
+            for (i = [0:n-1]) {
+            translate([i*fan_size, 0, 0])
+                circle(d = fan_hole_size);
+            }
         }
     }
+
 }
 
 // Create the holes for a single fan, specifying dimensions and which holes
