@@ -20,10 +20,10 @@ hole_spacing = 105;
 hole_diameter = 4.3;
 
 // Use slots instead of holes
-slot = false;
+slot = true;
 
 // Thickness of the plate that mounts to the fans
-plate_thickness = 3;
+plate_thickness = 1.5;
 
 // Thickness of the walls
 wall_thickness = 2;
@@ -34,10 +34,10 @@ module duct_out() {
 }
 
 // Full height of the duct
-full_height = 40;
+full_height = 10;
 
 // Offset of duct output 
-output_offset = [20, 40];
+output_offset = [10, 40];
 
 // Segments for circle, improves model quality at cost of render time
 $fn = 50;

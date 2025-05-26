@@ -3,6 +3,7 @@
 Parametric fan duct for PC fans, written in OpenSCAD
 
 ![OpenSCAD Render](/docs/FanDuct.png)
+
 *Example of a 2x 120 mm fan shroud*
 
 This OpenSCAD document creates a fan duct to guide air from case fans to a heatsink, such as that of a deshrouded GPU.
